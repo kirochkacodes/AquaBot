@@ -3,7 +3,7 @@ const Vec3 = require('vec3');
 const express = require('express');
 const bodyParser = require('body-parser');
 const http = require('http');
-const fetch = require('node-fetch'); // Импорт node-fetch для пинга
+const fetch = require('node-fetch');
 
 const originalParse = JSON.parse;
 
@@ -26,8 +26,8 @@ JSON.parse = function(text) {
 
 const config = {
   username: 'kirochkacode',
-  host: 'localhost',
-  port: 61164,
+  host: 'mc.mineblaze.net',
+  port: 25565,
   version: '1.16'
 };
 
@@ -61,6 +61,12 @@ bot.on('login', () => {
   console.log('');
 });
 
+// Отображаем чат сервера в консоль (кроме сообщений от самого бота)
+bot.on('chat', (username, message) => {
+  if (username === bot.username) return;
+  console.log(`[${username}]: ${message}`);
+});
+
 bot.on('end', () => {
   console.log('\n× Отключение от сервера');
   process.exit();
@@ -88,7 +94,7 @@ console.error = function(...args) {
   originalConsoleError.apply(console, args);
 };
 
-// Также подавляем process warning события
+// Подавление process warning событий
 process.on('warning', (warning) => {
   if (warning.name === 'DeprecationWarning' && (warning.message.includes('entity.objectType') || warning.message.includes('entity.mobType'))) {
     return; // Игнорируем предупреждения
@@ -315,6 +321,12 @@ function keepAlive() {
 }
 
 setInterval(keepAlive, KEEP_ALIVE_INTERVAL);
+
+// Отображаем чат сервера в консоль (кроме сообщений от самого бота)
+bot.on('chat', (username, message) => {
+  if (username === bot.username) return;
+  console.log(`[${username}]: ${message}`);
+});
 
 process.on('SIGINT', () => {
   console.log('\nЗавершение работы...');
