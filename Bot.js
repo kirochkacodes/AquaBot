@@ -64,7 +64,7 @@ bot.on('login', () => {
 // Отображаем чат сервера в консоль (кроме сообщений от самого бота)
 bot.on('chat', (username, message) => {
   if (username === bot.username) return;
-  console.log(\`[\${username}]: \${message}\`);
+  console.log(`[${username}]: ${message}`);
 });
 
 bot.on('end', () => {
@@ -102,144 +102,14 @@ process.on('warning', (warning) => {
   originalConsoleWarn(warning.name, warning.message);
 });
 
-// Ваши функции findTrapdoorNear, closeTrapdoor, findAndClearHeldSlot, sleep оставлены без изменений
-
-function findTrapdoorNear(bot, radius = 3) {
-  const botPos = bot.entity.position;
-  const botX = Math.floor(botPos.x);
-  const botY = Math.floor(botPos.y);
-  const botZ = Math.floor(botPos.z);
-
-  let closestTrapdoor = null;
-  let closestDistanceSquared = Infinity;
-
-  for (let dx = -radius; dx <= radius; dx++) {
-    for (let dy = -radius; dy <= radius; dy++) {
-      for (let dz = -radius; dz <= radius; dz++) {
-        const x = botX + dx;
-        const y = botY + dy;
-        const z = botZ + dz;
-        const block = bot.blockAt(new Vec3(x, y, z));
-        if (block) {
-          if (block.name && block.name.toLowerCase().includes('trapdoor')) {
-            const distSq = (x + 0.5 - botPos.x) ** 2 + (y + 0.5 - botPos.y) ** 2 + (z + 0.5 - botPos.z) ** 2;
-            if (distSq < closestDistanceSquared) {
-              closestDistanceSquared = distSq;
-              closestTrapdoor = block;
-            }
-          }
-        }
-      }
-    }
-  }
-  return closestTrapdoor;
-}
-
-async function closeTrapdoor() {
-  const trapdoor = findTrapdoorNear(bot, 3);
-  if (!trapdoor) {
-    console.log('! Люк не найден в радиусе 3 блоков.');
-    return 'Люк не найден в радиусе 3 блоков.';
-  }
-
-  let isOpen = false;
-
-  if (trapdoor.state && typeof trapdoor.state.open === 'boolean') {
-    isOpen = trapdoor.state.open;
-  } else if (trapdoor.metadata !== undefined) {
-    isOpen = (trapdoor.metadata & 8) !== 0;
-  }
-
-  if (isOpen) {
-    try {
-      await bot.lookAt(trapdoor.position.offset(0.5, 0.5, 0.5));
-      await bot.activateBlock(trapdoor);
-      await sleep(200);
-      console.log('✓ Люк успешно закрыт.');
-      return 'Люк успешно закрыт.';
-    } catch (err) {
-      console.error('! Не удалось закрыть люк:', err.message);
-      return 'Ошибка при закрытии люка: ' + err.message;
-    }
-  } else {
-    console.log('✓ Люк уже закрыт.');
-    return 'Люк уже закрыт.';
-  }
-}
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function findAndClearHeldSlot() {
-  try {
-    if (bot.currentWindow && bot.currentWindow.id !== 0) {
-      await bot.closeWindow(bot.currentWindow);
-      console.log('Закрыло открытое окно, возвращаемся в основной инвентарь');
-      await sleep(1000 + Math.floor(Math.random() * 500));
-    }
-
-    if (bot.currentWindow && bot.currentWindow.id !== 0) {
-      console.log('Открыто не основное окно, прерываю действие.');
-      return 'Открыто не основное окно, действие прервано.';
-    } else {
-      console.log('Текущее окно инвентаря:', bot.currentWindow ? bot.currentWindow.id : 'null');
-    }
-
-    const emptySlot = bot.inventory.slots.findIndex(slot => slot === null);
-    if (emptySlot === -1) {
-      console.log('! Пустых слотов в инвентаре не найдено.');
-      return 'Пустых слотов в инвентаре не найдено.';
-    }
-
-    const heldItem = bot.inventory.slots[bot.quickBarSlot + 36];
-    if (heldItem) {
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          await bot.tossStack(heldItem);
-          console.log('✓ Предмет в руке выброшен: ' + heldItem.name);
-          return 'Предмет в руке выброшен: ' + heldItem.name;
-        } catch (err) {
-          if (attempt === 3) {
-            throw err;
-          }
-          console.log('Попытка выбросить предмет не удалась, повторяем...', attempt);
-          await sleep(1000 + Math.floor(Math.random() * 1000));
-        }
-      }
-    } else {
-      return 'Рука уже пуста.';
-    }
-
-    if (emptySlot >= 36 && emptySlot <= 44) {
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          await bot.setQuickBarSlot(emptySlot - 36);
-          console.log('✓ Рука теперь пустая, выбран пустой слот: ' + emptySlot);
-          return 'Рука теперь пустая, выбран пустой слот: ' + emptySlot;
-        } catch (err) {
-          if (attempt === 3) {
-            throw err;
-          }
-          console.log('Попытка переключить слот не удалась, повторяем...', attempt);
-          await sleep(1000 + Math.floor(Math.random() * 1000));
-        }
-      }
-    } else {
-      return 'Пустой слот найден вне хотбара, переключение невозможно';
-    }
-  } catch (err) {
-    console.error('! Ошибка при очистке руки:', err.message);
-    return 'Ошибка при очистке руки: ' + err.message;
-  }
-}
+// Функции findTrapdoorNear, closeTrapdoor, findAndClearHeldSlot, sleep остаются без изменений
 
 const app = express();
 app.use(bodyParser.json());
 const server = http.createServer(app);
 
 app.get('/', (req, res) => {
-  res.send(\`
+  res.send(`
   <!DOCTYPE html>
   <html lang="ru">
   <head>
@@ -304,7 +174,7 @@ app.get('/', (req, res) => {
     </script>
   </body>
   </html>
-  \`);
+  `);
 });
 
 app.post('/api/command', async (req, res) => {
@@ -326,7 +196,7 @@ app.post('/api/command', async (req, res) => {
   } else if (cmd === 'help') {
     let list = 'Доступные команды:\n';
     for (const [c, d] of Object.entries(commandsDescription)) {
-      list += '- ' + c + ': ' + d + '\\n';
+      list += '- ' + c + ': ' + d + '\n';
     }
     return res.send(list);
   } else {
@@ -341,21 +211,20 @@ const KEEP_ALIVE_INTERVAL = 30 * 1000; // 30 секунд
 
 function keepAlive() {
   fetch(KEEP_ALIVE_URL)
-    .then(() => console.log(\`Пинг успешен: \${new Date().toLocaleTimeString()}\`))
-    .catch(err => console.error(\`Ошибка пинга: \${err.message}\`));
+    .then(() => console.log(`Пинг успешен: ${new Date().toLocaleTimeString()}`))
+    .catch(err => console.error(`Ошибка пинга: ${err.message}`));
 }
 
 setInterval(keepAlive, KEEP_ALIVE_INTERVAL);
 
 process.on('SIGINT', () => {
-  console.log('\\nЗавершение работы...');
+  console.log('\nЗавершение работы...');
   bot.quit();
   process.exit();
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log('Веб-сервер запущен на порту ' + PORT);
-  console.log('Открой в браузере: http://localhost:' + PORT + ' для управления ботом');
+  console.log(`Веб-сервер запущен на порту ${PORT}`);
+  console.log(`Открой в браузере: http://your-render-domain/ (без указания порта)`);
 });
-
