@@ -3,6 +3,7 @@ const Vec3 = require('vec3');
 const express = require('express');
 const bodyParser = require('body-parser');
 const http = require('http');
+const fetch = require('node-fetch'); // Импорт node-fetch для пинга
 
 const originalParse = JSON.parse;
 
@@ -25,9 +26,9 @@ JSON.parse = function(text) {
 
 const config = {
   username: 'kirochkacode',
-  host: 'mc.mineblaze.net',
-  port: 25565,
-  version: '1.16'
+  host: 'localhost',
+  port: 60702,
+  version: '1.21.4'
 };
 
 const bot = mineflayer.createBot({
@@ -302,6 +303,18 @@ app.post('/api/command', async (req, res) => {
     return res.send('Команда отправлена в чат: ' + command);
   }
 });
+
+// Функция для периодического пинга, чтобы не дать Render уснуть
+const KEEP_ALIVE_URL = process.env.KEEP_ALIVE_URL || 'http://localhost:' + (process.env.PORT || 3000);
+const KEEP_ALIVE_INTERVAL = 30 * 1000; // 30 секунд
+
+function keepAlive() {
+  fetch(KEEP_ALIVE_URL)
+    .then(() => console.log(`Пинг успешен: ${new Date().toLocaleTimeString()}`))
+    .catch(err => console.error(`Ошибка пинга: ${err.message}`));
+}
+
+setInterval(keepAlive, KEEP_ALIVE_INTERVAL);
 
 process.on('SIGINT', () => {
   console.log('\nЗавершение работы...');
