@@ -1,25 +1,21 @@
-{
-  "name": "minecraft-bot",
-  "version": "1.0.0",
-  "description": "A Minecraft bot using mineflayer",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "mineflayer": "^2.40.0",
-    "vec3": "^0.0.1",
-    "minecraft-data": "^1.17.0"
-    "express": "^4.17.1",
-    "prismarine-registry": "^1.4.0
-  },
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourusername/your-repo-name.git"
-  },
-  "author": "Ваше Имя",
-  "license": "MIT"
-}
+   {
+     "name": "minecraft-bot",
+     "version": "1.0.0",
+     "description": "A Minecraft bot using mineflayer",
+     "main": "index.js",
+     "scripts": {
+       "start": "node Bot.js"
+     },
+     "dependencies": {
+       "express": "^4.17.1",
+       "mineflayer": "^2.40.0",
+       "prismarine-registry": "^1.4.0",
+       "body-parser": "^1.19.0"
+     },
+     "engines": {
+       "node": ">=14.0.0"
+     },
+     "author": "Ваше Имя",
+     "license": "MIT"
+   }
+   
