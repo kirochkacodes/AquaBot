@@ -55,7 +55,7 @@ bot.on('login', () => {
   console.log('✓ Успешное подключение как ' + bot.username + '\n');
   console.log('Доступные команды бота:');
   for (const [cmd, desc] of Object.entries(commandsDescription)) {
-    console.log(` - ${cmd}: ${desc}`);
+    console.log(' - ' + cmd + ': ' + desc);
   }
   console.log('');
 });
@@ -294,7 +294,7 @@ app.post('/api/command', async (req, res) => {
   } else if (cmd === 'help') {
     let list = 'Доступные команды:\n';
     for (const [c, d] of Object.entries(commandsDescription)) {
-      list += `- ${c}: ${d}\n`;
+      list += '- ' + c + ': ' + d + '\n';
     }
     return res.send(list);
   } else {
@@ -303,7 +303,6 @@ app.post('/api/command', async (req, res) => {
   }
 });
 
-// Подавление предупреждений (как в оригинальном коде)
 process.on('SIGINT', () => {
   console.log('\nЗавершение работы...');
   bot.quit();
@@ -312,7 +311,7 @@ process.on('SIGINT', () => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(\`Веб-сервер запущен на порту \${PORT}\`);
-  console.log(`Открой в браузере: http://localhost:\${PORT} для управления ботом`);
+  console.log('Веб-сервер запущен на порту ' + PORT);
+  console.log('Открой в браузере: http://localhost:' + PORT + ' для управления ботом');
 });
 
