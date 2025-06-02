@@ -28,7 +28,7 @@ const config = {
   username: 'kirochkacode',
   host: 'mc.mineblaze.net',
   port: 25565,
-  version: '1.19'
+  version: '1.16.5'
 };
 
 const bot = mineflayer.createBot({
