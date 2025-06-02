@@ -1,0 +1,23 @@
+{
+  "name": "minecraft-bot",
+  "version": "1.0.0",
+  "description": "A Minecraft bot using mineflayer",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "mineflayer": "^2.40.0",
+    "vec3": "^0.0.1",
+    "minecraft-data": "^1.17.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/your-repo-name.git"
+  },
+  "author": "Ваше Имя",
+  "license": "MIT"
+}
