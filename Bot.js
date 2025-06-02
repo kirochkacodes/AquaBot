@@ -27,15 +27,15 @@ JSON.parse = function(text) {
 const config = {
   username: 'kirochkacode',
   host: 'localhost',
-  port: 60702,
-  // version: '1.16' // версия убрана из конфигурации
+  port: 61164,
+  version: '1.16'
 };
 
 const bot = mineflayer.createBot({
   username: config.username,
   host: config.host,
   port: config.port,
-  // version отключена в параметрах
+  version: config.version,
   skipValidation: true,
   hideErrors: true,
   disableSkinParsing: true
@@ -310,8 +310,8 @@ const KEEP_ALIVE_INTERVAL = 30 * 1000; // 30 секунд
 
 function keepAlive() {
   fetch(KEEP_ALIVE_URL)
-    .then(() => console.log(`Пинг успешен: \${new Date().toLocaleTimeString()}`))
-    .catch(err => console.error(`Ошибка пинга: \${err.message}`));
+    .then(() => console.log(`Пинг успешен: ${new Date().toLocaleTimeString()}`))
+    .catch(err => console.error(`Ошибка пинга: ${err.message}`));
 }
 
 setInterval(keepAlive, KEEP_ALIVE_INTERVAL);
@@ -327,4 +327,3 @@ server.listen(PORT, () => {
   console.log('Веб-сервер запущен на порту ' + PORT);
   console.log('Открой в браузере: http://localhost:' + PORT + ' для управления ботом');
 });
-
