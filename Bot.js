@@ -28,14 +28,14 @@ const config = {
   username: 'kirochkacode',
   host: 'localhost',
   port: 60702,
-  version: '1.21.4'
+  // version: '1.16' // версия убрана из конфигурации
 };
 
 const bot = mineflayer.createBot({
   username: config.username,
   host: config.host,
   port: config.port,
-  version: config.version,
+  // version отключена в параметрах
   skipValidation: true,
   hideErrors: true,
   disableSkinParsing: true
@@ -310,8 +310,8 @@ const KEEP_ALIVE_INTERVAL = 30 * 1000; // 30 секунд
 
 function keepAlive() {
   fetch(KEEP_ALIVE_URL)
-    .then(() => console.log(`Пинг успешен: ${new Date().toLocaleTimeString()}`))
-    .catch(err => console.error(`Ошибка пинга: ${err.message}`));
+    .then(() => console.log(`Пинг успешен: \${new Date().toLocaleTimeString()}`))
+    .catch(err => console.error(`Ошибка пинга: \${err.message}`));
 }
 
 setInterval(keepAlive, KEEP_ALIVE_INTERVAL);
