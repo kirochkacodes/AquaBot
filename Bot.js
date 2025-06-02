@@ -102,137 +102,8 @@ process.on('warning', (warning) => {
   originalConsoleWarn(warning.name, warning.message);
 });
 
-// Функции findTrapdoorNear, closeTrapdoor, findAndClearHeldSlot, sleep оставлены без изменений
-
-function findTrapdoorNear(bot, radius = 3) {
-  const botPos = bot.entity.position;
-  const botX = Math.floor(botPos.x);
-  const botY = Math.floor(botPos.y);
-  const botZ = Math.floor(botPos.z);
-
-  let closestTrapdoor = null;
-  let closestDistanceSquared = Infinity;
-
-  for (let dx = -radius; dx <= radius; dx++) {
-    for (let dy = -radius; dy <= radius; dy++) {
-      for (let dz = -radius; dz <= radius; dz++) {
-        const x = botX + dx;
-        const y = botY + dy;
-        const z = botZ + dz;
-        const block = bot.blockAt(new Vec3(x, y, z));
-        if (block) {
-          if (block.name && block.name.toLowerCase().includes('trapdoor')) {
-            const distSq = (x + 0.5 - botPos.x) ** 2 + (y + 0.5 - botPos.y) ** 2 + (z + 0.5 - botPos.z) ** 2;
-            if (distSq < closestDistanceSquared) {
-              closestDistanceSquared = distSq;
-              closestTrapdoor = block;
-            }
-          }
-        }
-      }
-    }
-  }
-  return closestTrapdoor;
-}
-
-async function closeTrapdoor() {
-  const trapdoor = findTrapdoorNear(bot, 3);
-  if (!trapdoor) {
-    console.log('! Люк не найден в радиусе 3 блоков.');
-    return 'Люк не найден в радиусе 3 блоков.';
-  }
-
-  let isOpen = false;
-
-  if (trapdoor.state && typeof trapdoor.state.open === 'boolean') {
-    isOpen = trapdoor.state.open;
-  } else if (trapdoor.metadata !== undefined) {
-    isOpen = (trapdoor.metadata & 8) !== 0;
-  }
-
-  if (isOpen) {
-    try {
-      await bot.lookAt(trapdoor.position.offset(0.5, 0.5, 0.5));
-      await bot.activateBlock(trapdoor);
-      await sleep(200);
-      console.log('✓ Люк успешно закрыт.');
-      return 'Люк успешно закрыт.';
-    } catch (err) {
-      console.error('! Не удалось закрыть люк:', err.message);
-      return 'Ошибка при закрытии люка: ' + err.message;
-    }
-  } else {
-    console.log('✓ Люк уже закрыт.');
-    return 'Люк уже закрыт.';
-  }
-}
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function findAndClearHeldSlot() {
-  try {
-    if (bot.currentWindow && bot.currentWindow.id !== 0) {
-      await bot.closeWindow(bot.currentWindow);
-      console.log('Закрыло открытое окно, возвращаемся в основной инвентарь');
-      await sleep(1000 + Math.floor(Math.random() * 500));
-    }
-
-    if (bot.currentWindow && bot.currentWindow.id !== 0) {
-      console.log('Открыто не основное окно, прерываю действие.');
-      return 'Открыто не основное окно, действие прервано.';
-    } else {
-      console.log('Текущее окно инвентаря:', bot.currentWindow ? bot.currentWindow.id : 'null');
-    }
-
-    const emptySlot = bot.inventory.slots.findIndex(slot => slot === null);
-    if (emptySlot === -1) {
-      console.log('! Пустых слотов в инвентаре не найдено.');
-      return 'Пустых слотов в инвентаре не найдено.';
-    }
-
-    const heldItem = bot.inventory.slots[bot.quickBarSlot + 36];
-    if (heldItem) {
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          await bot.tossStack(heldItem);
-          console.log('✓ Предмет в руке выброшен: ' + heldItem.name);
-          return 'Предмет в руке выброшен: ' + heldItem.name;
-        } catch (err) {
-          if (attempt === 3) {
-            throw err;
-          }
-          console.log('Попытка выбросить предмет не удалась, повторяем...', attempt);
-          await sleep(1000 + Math.floor(Math.random() * 1000));
-        }
-      }
-    } else {
-      return 'Рука уже пуста.';
-    }
-
-    if (emptySlot >= 36 && emptySlot <= 44) {
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          await bot.setQuickBarSlot(emptySlot - 36);
-          console.log('✓ Рука теперь пустая, выбран пустой слот: ' + emptySlot);
-          return 'Рука теперь пустая, выбран пустой слот: ' + emptySlot;
-        } catch (err) {
-          if (attempt === 3) {
-            throw err;
-          }
-          console.log('Попытка переключить слот не удалась, повторяем...', attempt);
-          await sleep(1000 + Math.floor(Math.random() * 1000));
-        }
-      }
-    } else {
-      return 'Пустой слот найден вне хотбара, переключение невозможно';
-    }
-  } catch (err) {
-    console.error('! Ошибка при очистке руки:', err.message);
-    return 'Ошибка при очистке руки: ' + err.message;
-  }
-}
+// Функции для работы с люками и инвентарем
+// ... (оставьте ваши функции findTrapdoorNear, closeTrapdoor, findAndClearHeldSlot и sleep без изменений)
 
 const app = express();
 app.use(bodyParser.json());
@@ -241,19 +112,14 @@ const server = http.createServer(app);
 app.get('/', (req, res) => {
   res.send(`
   <!DOCTYPE html>
-  <html lang="ru">
+  <html>
   <head>
-    <meta charset="UTF-8" />
     <title>Управление Minecraft ботом</title>
     <style>
       body { font-family: Arial, sans-serif; background: #202020; color: #eee; text-align: center; padding: 30px; }
       button { font-size: 16px; padding: 12px 24px; margin: 10px; cursor: pointer; border-radius: 6px; border: none; background: #4CAF50; color: white; transition: background 0.3s; }
       button:hover { background: #45a049; }
-      #log { margin-top: 40px; background: #333; padding: 15px; border-radius: 8px; height: 200px; overflow-y: auto; text-align: left; font-family: monospace; white-space: pre-wrap; }
-      #commandForm { margin-top: 20px; }
-      #commandInput { width: 60%; padding: 10px; font-size: 16px; border-radius: 6px; border: none; }
-      #sendCommandBtn { padding: 10px 20px; font-size: 16px; border-radius: 6px; border: none; background: #2196F3; color: white; cursor: pointer; transition: background 0.3s; }
-      #sendCommandBtn:hover { background: #0b7dda; }
+      #log { margin-top: 40px; background: #333; padding: 15px; border-radius: 8px; height: 200px; overflow-y: auto; text-align: left; font-family: monospace; }
     </style>
   </head>
   <body>
@@ -261,12 +127,6 @@ app.get('/', (req, res) => {
     <button onclick="sendCommand('закрыть')">Закрыть люк</button>
     <button onclick="sendCommand('слот')">Очистить руку</button>
     <button onclick="sendCommand('exit')">Выход</button>
-
-    <form id="commandForm" onsubmit="return sendCustomCommand(event)">
-      <input id="commandInput" type="text" placeholder="Введите команду или сообщение для бота" autocomplete="off" autofocus />
-      <button id="sendCommandBtn" type="submit">Отправить</button>
-    </form>
-
     <div id="log"></div>
 
     <script>
@@ -284,18 +144,6 @@ app.get('/', (req, res) => {
           appendLog('Ошибка: ' + error.message);
         }
       }
-
-      async function sendCustomCommand(event) {
-        event.preventDefault();
-        const input = document.getElementById('commandInput');
-        const command = input.value.trim();
-        if (command === '') return false;
-        await sendCommand(command);
-        input.value = '';
-        input.focus();
-        return false;
-      }
-
       function appendLog(text) {
         const log = document.getElementById('log');
         log.innerText += text + '\\n';
@@ -358,4 +206,3 @@ server.listen(PORT, () => {
   console.log('Веб-сервер запущен на порту ' + PORT);
   console.log('Открой в браузере: http://localhost:' + PORT + ' для управления ботом');
 });
-
