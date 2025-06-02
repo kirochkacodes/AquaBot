@@ -25,7 +25,7 @@ JSON.parse = function(text) {
 };
 
 const config = {
-  username: 'kirochkacode',
+  username: 'kirochkacode1',
   host: 'mc.mineblaze.net',
   port: 25565,
   version: '1.16.5'
