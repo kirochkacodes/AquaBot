@@ -206,7 +206,7 @@ app.post('/api/command', async (req, res) => {
 });
 
 // Функция для периодического пинга, чтобы не дать Render уснуть
-const KEEP_ALIVE_URL = process.env.KEEP_ALIVE_URL || 'http://localhost:' + (process.env.PORT || 3000);
+const KEEP_ALIVE_URL = process.env.KEEP_ALIVE_URL || 'http://localhost:' + (process.env.PORT || 25565);
 const KEEP_ALIVE_INTERVAL = 30 * 1000; // 30 секунд
 
 function keepAlive() {
@@ -223,7 +223,7 @@ process.on('SIGINT', () => {
   process.exit();
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 25565;
 server.listen(PORT, () => {
   console.log(`Веб-сервер запущен на порту ${PORT}`);
   console.log(`Открой в браузере: http://your-render-domain/ (без указания порта)`);
