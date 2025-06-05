@@ -27,7 +27,7 @@ const config = {
   host: 'mc.mineblaze.net',
   port: 25565,
   version: '1.16',
-  telegramToken: 'YOUR_TELEGRAM_BOT_TOKEN' // Замените на ваш токен Telegram бота
+  telegramToken: '7192022070:AAEtcUnInNIcttBqF_35LtY-A78wyITomAY' // Замените на ваш токен Telegram бота
 };
 
 let reconnectAttempts = 0;
