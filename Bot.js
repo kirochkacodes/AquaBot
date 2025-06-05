@@ -1,10 +1,7 @@
 const mineflayer = require('mineflayer');
 const Vec3 = require('vec3');
-const express = require('express');
-const bodyParser = require('body-parser');
-const http = require('http');
-const fetch = require('node-fetch');
-
+const readline = require('readline');
+const TelegramBot = require('node-telegram-bot-api');
 const originalParse = JSON.parse;
 
 // Переопределяем JSON.parse для исправления ошибок парсинга с текстурами
@@ -24,207 +21,213 @@ JSON.parse = function(text) {
   }
 };
 
+// Настройки бота
 const config = {
   username: 'kirochkacode',
   host: 'mc.mineblaze.net',
   port: 25565,
-  version: '1.16'
+  version: '1.16',
+  telegramToken: 'YOUR_TELEGRAM_BOT_TOKEN' // Замените на ваш токен Telegram бота
 };
 
-const bot = mineflayer.createBot({
-  username: config.username,
-  host: config.host,
-  port: config.port,
-  version: config.version,
-  skipValidation: true,
-  hideErrors: true,
-  disableSkinParsing: true
-});
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 5;
 
-console.clear();
-console.log('Minecraft Bot v1.0\nПодключаемся к ' + config.host + ':' + config.port + '...\n');
+const telegramBot = new TelegramBot(config.telegramToken, { polling: true });
 
-const commandsDescription = {
-  exit: 'Выход из бота',
-  закрыть: 'Закрыть люк рядом',
-  закрой: 'Закрыть люк рядом',
-  слот: 'Найти пустой слот и очистить руку',
-  help: 'Показать список доступных команд'
-};
+// Функция для создания Minecraft бота
+function createBot() {
+  console.clear();
+  console.log('Minecraft Bot v1.0\nПодключаемся к ' + config.host + ':' + config.port + ' (версия ' + config.version + ')...\n');
 
-bot.on('login', () => {
-  console.log('✓ Успешное подключение как ' + bot.username + '\n');
-  console.log('Доступные команды бота:');
-  for (const [cmd, desc] of Object.entries(commandsDescription)) {
-    console.log(' - ' + cmd + ': ' + desc);
+  const bot = mineflayer.createBot({
+    username: config.username,
+    host: config.host,
+    port: config.port,
+    version: config.version,
+    skipValidation: true,
+    hideErrors: true,
+    disableSkinParsing: true
+  });
+
+  const commandsDescription = {
+    exit: 'Выход из бота',
+    закрыть: 'Закрыть люк рядом',
+    закрой: 'Закрыть люк рядом',
+    слот: 'Найти пустой слот и очистить руку',
+    help: 'Показать список доступных команд'
+  };
+
+  // Лог подключения
+  bot.on('connecting', () => {
+    console.log('... Подключаемся к серверу...');
+  });
+
+  bot.on('connect', () => {
+    console.log('Соединение установлено с сервером.');
+  });
+
+  bot.on('login', () => {
+    console.log('✓ Успешное подключение как ' + bot.username + '\n');
+
+    // Вывод списка доступных команд при запуске
+    console.log('Доступные команды бота:');
+    for (const [cmd, desc] of Object.entries(commandsDescription)) {
+      console.log(` - ${cmd}: ${desc}`);
+    }
+    console.log('');
+    reconnectAttempts = 0;  // сброс попыток переподключения
+  });
+
+  bot.on('spawn', () => {
+    console.log('Бот заспаунен на сервере. Координаты: ' + JSON.stringify(bot.entity ? bot.entity.position : 'неизвестны'));
+  });
+
+  bot.on('kicked', (reason, loggedIn) => {
+    console.error('Бот был кикнут с сервера. Причина: ' + reason + '. Был ли залогинен: ' + loggedIn);
+  });
+
+  bot.on('end', () => {
+    console.log('× Отключение от сервера');
+    if (reconnectAttempts < maxReconnectAttempts) {
+      reconnectAttempts++;
+      console.log(`Попытка переподключения #${reconnectAttempts} через 5 секунд...`);
+      setTimeout(() => {
+        createBot();
+      }, 5000);
+    } else {
+      console.log('Достигнуто максимальное количество попыток переподключения. Завершение работы.');
+      process.exit();
+    }
+  });
+
+  bot.on('error', (err) => {
+    console.error('\n! Ошибка:', err.message);
+  });
+
+  bot.on('message', (message) => {
+    console.log('[Чат]', message.toAnsi());
+  });
+
+  // Функция для закрытия люка
+  async function closeTrapdoor() {
+    const trapdoor = findTrapdoorNear(bot, 3);
+    if (!trapdoor) {
+      console.log('! Люк не найден в радиусе 3 блоков.');
+      return;
+    }
+
+    let isOpen = trapdoor.state && typeof trapdoor.state.open === 'boolean' ? trapdoor.state.open : (trapdoor.metadata & 8) !== 0;
+
+    if (isOpen) {
+      try {
+        await bot.lookAt(trapdoor.position.offset(0.5, 0.5, 0.5));
+        await bot.activateBlock(trapdoor);
+        console.log('✓ Люк успешно закрыт.');
+      } catch (err) {
+        console.error('! Не удалось закрыть люк:', err.message);
+      }
+    } else {
+      console.log('✓ Люк уже закрыт.');
+    }
   }
-  console.log('');
-});
 
-// Отображаем чат сервера в консоль (кроме сообщений от самого бота)
-bot.on('chat', (username, message) => {
-  if (username === bot.username) return;
-  console.log(`[${username}]: ${message}`);
-});
+  // Функция для поиска люка рядом
+  function findTrapdoorNear(bot, radius = 3) {
+    const botPos = bot.entity.position;
+    const botX = Math.floor(botPos.x);
+    const botY = Math.floor(botPos.y);
+    const botZ = Math.floor(botPos.z);
 
-bot.on('end', () => {
-  console.log('\n× Отключение от сервера');
-  process.exit();
-});
+    let closestTrapdoor = null;
+    let closestDistanceSquared = Infinity;
 
-bot.on('error', (err) => {
-  console.error('\n! Ошибка:', err.message);
-});
-
-// Подавление предупреждений о deprecated entity.objectType и entity.mobType
-const originalConsoleWarn = console.warn;
-const originalConsoleError = console.error;
-
-console.warn = function(...args) {
-  if (args.some(arg => typeof arg === 'string' && (arg.includes('entity.objectType') || arg.includes('entity.mobType')))) {
-    return; // Игнорируем предупреждения
-  }
-  originalConsoleWarn.apply(console, args);
-};
-
-console.error = function(...args) {
-  if (args.some(arg => typeof arg === 'string' && (arg.includes('entity.objectType') || arg.includes('entity.mobType')))) {
-    return; // Игнорируем ошибки
-  }
-  originalConsoleError.apply(console, args);
-};
-
-// Подавление process warning событий
-process.on('warning', (warning) => {
-  if (warning.name === 'DeprecationWarning' && (warning.message.includes('entity.objectType') || warning.message.includes('entity.mobType'))) {
-    return; // Игнорируем предупреждения
-  }
-  originalConsoleWarn(warning.name, warning.message);
-});
-
-// Функции findTrapdoorNear, closeTrapdoor, findAndClearHeldSlot, sleep остаются без изменений
-
-const app = express();
-app.use(bodyParser.json());
-const server = http.createServer(app);
-
-app.get('/', (req, res) => {
-  res.send(`
-  <!DOCTYPE html>
-  <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Управление Minecraft ботом</title>
-    <style>
-      body { font-family: Arial, sans-serif; background: #202020; color: #eee; text-align: center; padding: 30px; }
-      button { font-size: 16px; padding: 12px 24px; margin: 10px; cursor: pointer; border-radius: 6px; border: none; background: #4CAF50; color: white; transition: background 0.3s; }
-      button:hover { background: #45a049; }
-      #log { margin-top: 40px; background: #333; padding: 15px; border-radius: 8px; height: 200px; overflow-y: auto; text-align: left; font-family: monospace; white-space: pre-wrap; }
-      #commandForm { margin-top: 20px; }
-      #commandInput { width: 60%; padding: 10px; font-size: 16px; border-radius: 6px; border: none; }
-      #sendCommandBtn { padding: 10px 20px; font-size: 16px; border-radius: 6px; border: none; background: #2196F3; color: white; cursor: pointer; transition: background 0.3s; }
-      #sendCommandBtn:hover { background: #0b7dda; }
-    </style>
-  </head>
-  <body>
-    <h1>Управление Minecraft ботом</h1>
-    <button onclick="sendCommand('закрыть')">Закрыть люк</button>
-    <button onclick="sendCommand('слот')">Очистить руку</button>
-    <button onclick="sendCommand('exit')">Выход</button>
-
-    <form id="commandForm" onsubmit="return sendCustomCommand(event)">
-      <input id="commandInput" type="text" placeholder="Введите команду или сообщение для бота" autocomplete="off" autofocus />
-      <button id="sendCommandBtn" type="submit">Отправить</button>
-    </form>
-
-    <div id="log"></div>
-
-    <script>
-      async function sendCommand(command) {
-        appendLog('> ' + command);
-        try {
-          const response = await fetch('/api/command', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command })
-          });
-          const result = await response.text();
-          appendLog(result);
-        } catch (error) {
-          appendLog('Ошибка: ' + error.message);
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dz = -radius; dz <= radius; dz++) {
+          const x = botX + dx;
+          const y = botY + dy;
+          const z = botZ + dz;
+          const block = bot.blockAt(new Vec3(x, y, z));
+          if (block && block.name && block.name.toLowerCase().includes('trapdoor')) {
+            const distSq = (x + 0.5 - botPos.x) ** 2 + (y + 0.5 - botPos.y) ** 2 + (z + 0.5 - botPos.z) ** 2;
+            if (distSq < closestDistanceSquared) {
+              closestDistanceSquared = distSq;
+              closestTrapdoor = block;
+            }
+          }
         }
       }
-
-      async function sendCustomCommand(event) {
-        event.preventDefault();
-        const input = document.getElementById('commandInput');
-        const command = input.value.trim();
-        if (command === '') return false;
-        await sendCommand(command);
-        input.value = '';
-        input.focus();
-        return false;
-      }
-
-      function appendLog(text) {
-        const log = document.getElementById('log');
-        log.innerText += text + '\\n';
-        log.scrollTop = log.scrollHeight;
-      }
-    </script>
-  </body>
-  </html>
-  `);
-});
-
-app.post('/api/command', async (req, res) => {
-  const { command } = req.body;
-  if (!command) return res.status(400).send('Команда не указана');
-
-  const cmd = command.toLowerCase();
-
-  if (cmd === 'закрыть' || cmd === 'закрой') {
-    const result = await closeTrapdoor();
-    return res.send(result);
-  } else if (cmd === 'слот') {
-    const result = await findAndClearHeldSlot();
-    return res.send(result);
-  } else if (cmd === 'exit') {
-    bot.quit();
-    setTimeout(() => process.exit(), 1000);
-    return res.send('Бот завершает работу...');
-  } else if (cmd === 'help') {
-    let list = 'Доступные команды:\n';
-    for (const [c, d] of Object.entries(commandsDescription)) {
-      list += '- ' + c + ': ' + d + '\n';
     }
-    return res.send(list);
-  } else {
-    bot.chat(command);
-    return res.send('Команда отправлена в чат: ' + command);
+
+    return closestTrapdoor;
   }
-});
 
-// Функция для периодического пинга, чтобы не дать Render уснуть
-const KEEP_ALIVE_URL = process.env.KEEP_ALIVE_URL || 'http://localhost:' + (process.env.PORT || 25565);
-const KEEP_ALIVE_INTERVAL = 30 * 1000; // 30 секунд
+  // Функция для очистки руки
+  async function findAndClearHeldSlot() {
+    const emptySlot = bot.inventory.slots.findIndex(slot => slot === null);
+    if (emptySlot === -1) {
+      console.log('! Пустых слотов в инвентаре не найдено.');
+      return;
+    }
 
-function keepAlive() {
-  fetch(KEEP_ALIVE_URL)
-    .then(() => console.log(`Пинг успешен: ${new Date().toLocaleTimeString()}`))
-    .catch(err => console.error(`Ошибка пинга: ${err.message}`));
+    const heldItem = bot.inventory.slots[bot.quickBarSlot + 36];
+    if (heldItem) {
+      try {
+        await bot.tossStack(heldItem);
+        console.log('✓ Предмет в руке выброшен: ' + heldItem.name);
+      } catch (err) {
+        console.error('! Ошибка при выбрасывании предмета:', err.message);
+      }
+    }
+
+    if (emptySlot >= 36 && emptySlot <= 44) {
+      await bot.setQuickBarSlot(emptySlot - 36);
+      console.log('✓ Рука теперь пустая, выбран пустой слот: ' + emptySlot);
+    } else {
+      console.log('! Пустой слот найден вне хотбара, переключение невозможно');
+    }
+  }
+
+  // Обработка команд из Telegram
+  telegramBot.on('message', (msg) => {
+    const chatId = msg.chat.id;
+    const command = msg.text.trim().toLowerCase();
+
+    switch (command) {
+      case '/start':
+        telegramBot.sendMessage(chatId, 'Бот запущен! Используйте команды: /close, /slot, /help');
+        break;
+      case '/close':
+        closeTrapdoor().then(() => {
+          telegramBot.sendMessage(chatId, 'Люк закрыт.');
+        }).catch(err => {
+          telegramBot.sendMessage(chatId, 'Ошибка при закрытии люка: ' + err.message);
+        });
+        break;
+      case '/slot':
+        findAndClearHeldSlot().then(() => {
+          telegramBot.sendMessage(chatId, 'Рука очищена.');
+        }).catch(err => {
+          telegramBot.sendMessage(chatId, 'Ошибка при очистке руки: ' + err.message);
+        });
+        break;
+      case '/help':
+        telegramBot.sendMessage(chatId, 'Доступные команды: /close, /slot');
+        break;
+      default:
+        telegramBot.sendMessage(chatId, 'Неизвестная команда. Используйте /help для списка команд.');
+    }
+  });
+
+  return bot;
 }
 
-setInterval(keepAlive, KEEP_ALIVE_INTERVAL);
+// Запуск бота
+createBot();
 
+// Обработка завершения работы
 process.on('SIGINT', () => {
   console.log('\nЗавершение работы...');
-  bot.quit();
   process.exit();
-});
-
-const PORT = process.env.PORT || 25565;
-server.listen(PORT, () => {
-  console.log(`Веб-сервер запущен на порту ${PORT}`);
-  console.log(`Открой в браузере: http://your-render-domain/ (без указания порта)`);
 });
